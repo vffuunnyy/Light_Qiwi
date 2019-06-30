@@ -2,8 +2,7 @@
 from Light_Qiwi import Qiwi, OperationType
 
 
-token, phone = 'token', 'phone'
-api = Qiwi(token, phone)
+api = Qiwi("token", "phone")
 
 
 def write(payment):
@@ -26,7 +25,7 @@ def write(payment):
 
 @api.bind_check(amount=2, operation=OperationType.ALL)
 def waiter(payment):
-    wrirte(payment)
+    write(payment)
 
 
 if __name__ == '__main__':
@@ -37,7 +36,7 @@ if __name__ == '__main__':
     В параметре operation - тип операции Получение\Отправка денег или оба (по ум. только получение денег)
     """
     
-    mode = input("Напишите 1, если декоратор. Напишите 2, если цикл.")
+    mode = input("Напишите 1, если декоратор. Напишите 2, если цикл.\n")
     
     if mode == "1":
         api.start()
@@ -46,3 +45,4 @@ if __name__ == '__main__':
             write(payment)
     else:
         print("unknown")
+        
