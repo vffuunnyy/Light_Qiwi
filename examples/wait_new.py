@@ -9,7 +9,7 @@ def write(payment):
     if payment.type == OperationType.IN:
         print("Пришло: {} руб. От +{}.".format(
             payment.amount,
-            payment.from_account
+            payment.account
         ))
 
         # -> Пришло 125.25 руб. От +70123456789.
@@ -17,7 +17,7 @@ def write(payment):
     elif payment.type == OperationType.OUT:
         print("Ушло: {} руб. Кому: +{}.".format(
             payment.amount,
-            payment.from_account
+            payment.account
         ))
 
         # -> Ушло 125.25 руб. Кому: +70123456789.
