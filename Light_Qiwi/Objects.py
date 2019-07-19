@@ -21,7 +21,7 @@ class Payment:
         self.trm_txn_id = raw['trmTxnId']
 
         #: Тип платежа (см. Enums.OperationType)
-        self.type: OperationType = parse_item_enum(raw['type'], OperationType)
+        self.type = parse_item_enum(raw['type'], OperationType)
 
         #: Номер кошелька
         self.phone = raw['personId']
@@ -33,15 +33,15 @@ class Payment:
         self.error = raw['error']
 
         #: Фактическая сумма платежа или пополнения
-        self.amount: int = raw['total']['amount']
+        self.amount = raw['total']['amount']
 
         #: Валюта платежа (см. Enums.CurrencyStr)
-        self.currency: Currency = parse_item_multi_value_enum(
+        self.currency = parse_item_multi_value_enum(
             raw['total']['currency'], Currency
         )
 
         #: Статус платежа (см. Enums.PaymentStatus)
-        self.status: PaymentStatus = parse_item_enum(raw['status'], PaymentStatus)
+        self.status = parse_item_enum(raw['status'], PaymentStatus)
 
         #: Текстовое описание статуса платежа
         self.status_text = raw['statusText']
