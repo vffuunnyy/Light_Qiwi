@@ -177,7 +177,7 @@ class Qiwi:
 
         :rtype: list
         """
-        url = f'{self._host}funding-sources/v2/persons/{self.phone}/accounts'
+        url = f'{self._host}/funding-sources/v2/persons/{self.phone}/accounts'
         params = {'timeout': 1000} if retry else {}
 
         response = self._req(url, params).json()
