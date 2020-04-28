@@ -1,64 +1,100 @@
 # -*- coding: utf-8 -*-
-from Light_Qiwi.Enums import OperationType, Currency, PaymentStatus, Provider
+from Light_Qiwi.Enums import OperationType, Currency, PaymentStatus
 from Light_Qiwi.Utils import parse_item_enum, parse_item_multi_value_enum
 
 
 class Payment:
-    def __init__(self, raw):
-        """
-        Объект полученный от
-        https://developer.qiwi.com/ru/qiwi-wallet-personal/index.html?http#payments_list
+    """Объект полученный от
+        https://developer.qiwi.com/ru/qiwi-wallet-personal/index.html#payments_list
+    """
 
-        Args:
-            raw (dict): Объект data от payment_history
-        """
+    transaction_id: int  # ID транзакции в процессинге QIWI Wallet
+    trm_txn_id: int  # Клиентский ID транзакции
+    type: OperationType  # Тип платежа (см. Enums.OperationType)
+    phone: int  # Номер кошелька
+    error_code: int  # Код ошибки платежа
+    error: str  # Описание ошибки
+    status: PaymentStatus  # Статус платежа (см. Enums.PaymentStatus)
+    status_text: str  # Текстовое описание статуса платежа
+    comment: str  # Комментарий к платежу
+    currency_rate: float  # Курс конвертации (если применяется в транзакции)
+    cheque_ready: bool  # Специальное поле
+    bank_document_available: bool  # Специальное поле
+    bank_document_ready: bool  # Специальное поле
+    repeat_payment_enabled: bool  # Специальное поле
+    favorite_payment_enabled: bool  # Специальное поле
+    regular_payment_enabled: bool  # Специальное поле
+    extras: dict  # Служебная информация
+    amount: float  # Сумма платежа без комиссии
+    currency: Currency  # Валюта платежа (см. Enums.CurrencyStr)
+    commission: float  # Комиссия платежа
+    total: float  # Фактическая сумма платежа или пополнения
+    provider_id: int  # ID провайдера в QIWI Wallet
+    provider_short_name: str  # Краткое наименование провайдера
+    provider_long_name: str  # Развернутое наименование провайдера
+    provider_logo_url: str  # Ссылка на логотип провайдера
+    provider_description: str  # Описание провайдера (HTML)
+    provider_keys: str  # Список ключевых слов
+    provider_site_url: str  # Сайт провайдера
+
+    # Дата/время платежа, во временной зоне запроса (см. параметр startDate).
+    date: str  # Формат даты ГГГГ-ММ-ДД'T'чч:мм:сс+03:00
+
+    # Для платежей - номер счета получателя
+    account: str  # Для пополнений - номер отправителя, терминала или название агента пополнения кошелька
+
+    def __init__(self, raw: dict):
         self.raw = raw
 
-        #: ID транзакции в процессинге QIWI Wallet
-        self.transaction_id = raw['txnId']
+        self._parse(**raw)
 
-        #: Клиентский ID транзакции
-        self.trm_txn_id = raw['trmTxnId']
+    def _parse(self, txnId: int = None, personId: int = None, date: str = None, errorCode: int = None,
+               error: str = None, type: str = None, status: str = None, statusText: str = None, trmTxnId: str = None,
+               account: str = None, sum: dict = None, commission: dict = None, total: dict = None,
+               provider: dict = None, comment: str = None, currencyRate: float = None, extras: dict = None,
+               chequeReady: bool = None, bankDocumentAvailable: bool = None, bankDocumentReady: bool = None,
+               repeatPaymentEnabled: bool = None, favoritePaymentEnabled: bool = None,
+               regularPaymentEnabled: bool = None):
+        self.transaction_id = txnId
+        self.trm_txn_id = trmTxnId
+        self.type = parse_item_enum(type, OperationType)
+        self.phone = personId
+        self.error_code = errorCode
+        self.error = error
+        self.date = date
 
-        #: Тип платежа (см. Enums.OperationType)
-        self.type = parse_item_enum(raw['type'], OperationType)
+        self.status = parse_item_enum(status, PaymentStatus)
+        self.status_text = statusText
+        self.account = account
 
-        #: Номер кошелька
-        self.phone = raw['personId']
+        self.comment = comment
+        self.currency_rate = currencyRate
+        self.cheque_ready = chequeReady
+        self.bank_document_available = bankDocumentAvailable
+        self.bank_document_ready = bankDocumentReady
+        self.repeat_payment_enabled = repeatPaymentEnabled
+        self.favorite_payment_enabled = favoritePaymentEnabled
+        self.regular_payment_enabled = regularPaymentEnabled
+        self.extras = extras
 
-        #: Код ошибки платежа
-        self.error_code = raw['errorCode']
+        if sum:
+            self.amount = sum['amount']
+            self.currency = parse_item_multi_value_enum(sum['currency'], Currency)
 
-        #: Описание ошибки
-        self.error = raw['error']
+        if commission:
+            self.commission = commission['amount']
 
-        #: Фактическая сумма платежа или пополнения
-        self.amount = raw['total']['amount']
+        if total:
+            self.total = total['amount']
 
-        #: Валюта платежа (см. Enums.CurrencyStr)
-        self.currency = parse_item_multi_value_enum(
-            raw['total']['currency'], Currency
-        )
-
-        #: Статус платежа (см. Enums.PaymentStatus)
-        self.status = parse_item_enum(raw['status'], PaymentStatus)
-
-        #: Текстовое описание статуса платежа
-        self.status_text = raw['statusText']
-
-        #: Дата/время платежа, во временной зоне запроса (см. параметр startDate)
-        #: Формат даты ГГГГ-ММ-ДД'T'чч:мм:сс+03:00
-        self.date = raw['date']
-
-        #: Для платежей - номер счета получателя
-        #: Для пополнений - номер отправителя, терминала или название агента пополнения кошелька
-        self.account = raw['account']
-
-        #: Комментарий к платежу
-        self.comment = raw['comment']
-
-        #: Комиссия платежа
-        self.commission = raw['commission']['amount']
+        if provider:
+            self.provider_id = provider['id']
+            self.provider_short_name = provider['shortName']
+            self.provider_long_name = provider['longName']
+            self.provider_logo_url = provider['logoUrl']
+            self.provider_description = provider['description']
+            self.provider_keys = provider['keys']
+            self.provider_site_url = provider['siteUrl']
 
     def __eq__(self, other):
         if isinstance(other, Payment):
@@ -69,49 +105,146 @@ class Payment:
 
 
 class Balance:
-
-    def __init__(self, raw):
-        """
-        Объект полученный от
+    """Объект полученный от
         https://developer.qiwi.com/ru/qiwi-wallet-personal/index.html?http#balances_list
+    """
 
-        Args:
-            raw (dict): Объект account от balances_list
+    alias: str  # Псевдоним пользовательского баланса
+    fs_alias: str  # Псевдоним банковского баланса
+    bank_alias: str  # Псевдоним банка
+    title: str  # Название соответствующего счета кошелька
+    type_id: str  # Описание счета
+    type_title: str  # Описание счета
+    has_balance: bool  # Логический признак реального баланса в системе QIWI Кошелек
+    amount: float  # Текущий баланс данного счета
+    currency: Currency  # Валюта платежа (см. Enums.CurrencyStr)
+
+    def __init__(self, raw: dict):
+        """
+        :param raw: Объект account от balances_list
+        :type raw: dict
         """
 
-        self.alias = raw['alias']
-        self.balance = raw['balance']['amount']
-        self.currency = parse_item_multi_value_enum(raw['currency'], Currency)
+        self.raw = raw
+
+        self._parse(**raw)
+
+    def _parse(self, alias: str = None, fsAlias: str = None, bankAlias: str = None, title: str = None,
+               hasBalance: bool = None, currency: int = None, type: dict = None, balance: dict = None):
+        self.alias = alias
+        self.fs_alias = fsAlias
+        self.bank_alias = bankAlias
+        self.title = title
+        self.has_balance = hasBalance
+        self.currency = parse_item_multi_value_enum(currency, Currency)
+
+        if type:
+            self.type_id = type['id']
+            self.type_title = type['title']
+
+        if balance:
+            self.amount = balance['amount']
 
     def __str__(self):
-        return str(self.balance)
+        return str(self.amount)
 
     def __repr__(self):
         return "<Balance: {}, Alias: {}, Currency: {}>".format(
-            self.balance, self.alias, self.currency
+            self.amount, self.alias, self.currency
         )
 
 
 class QiwiTransferAnswer:
-    def __init__(self, raw):
-        """
-        Объект полученный от
-        https://developer.qiwi.com/ru/qiwi-wallet-personal/index.html?http#balances_list
+    """Объект полученный от
+        https://developer.qiwi.com/ru/qiwi-wallet-personal/index.html#p2p
+    """
 
-        Args:
-            raw (dict): Объект account от balances_list
-        """
+    id: int  # Копия параметра id из исходного запроса
+    transaction_id: int  # ID транзакции в процессинге QIWI Wallet
+    terms: int  # Константа, 99
+    currency: Currency  # Валюта платежа (см. Enums.CurrencyStr)
+    account: str  # Копия account из исходного запроса
+    amount: float  # Копия amount из исходного запроса
+    source: str  # Константа, account_643
+    comment: str  # Копия параметра comment из исходного запроса
+    status: str  # Текущий статус транзакции, только значение Accepted
 
+    def __init__(self, raw: dict):
         self.raw = raw
-        self.id = raw['id']
-        self.transaction_id = raw['transaction']['id']
-        self.terms = parse_item_enum(raw['terms'], Provider)
-        self.currency = parse_item_multi_value_enum(raw['transaction']['currency'], Currency)
-        self.phone = raw['fields']['account']
-        self.amount = raw['sum']['amount']
-        self.source = raw['source']
-        self.comment = raw['comment']
-        self.status = raw['transaction']['state']['code']
+
+        self._parse(**raw)
+
+    def _parse(self, id: int = None, terms: int = 99, fields: dict = None, sum: dict = None, transaction: dict = None,
+               comment: str = None, source: str = None):
+        self.id = id
+        self.terms = terms
+        self.comment = comment
+        self.source = source
+
+        if fields:
+            self.account = fields['account']
+
+        if sum:
+            self.amount = sum['amount']
+            self.currency = parse_item_multi_value_enum(sum['currency'], Currency)
+
+        if transaction:
+            self.transaction_id = transaction['id']
+            self.status = transaction['state']['code']
+
+    def __str__(self):
+        return str(self.raw)
+
+
+class Bill:
+    """
+
+    """
+
+    id: int  # Идентификатор счета в QIWI Кошельке
+    external_id: str  # Идентификатор счета у мерчанта
+    creation_datetime: int  # Дата/время создания счета, Unix-time
+    expiration_datetime: int  # Дата/время окончания срока действия счета, Unix-time
+    amount: float  # Сумма счета
+    currency: Currency  # Валюта суммы счета (см. Enums.CurrencyStr)
+    comment: str  # Комментарий к счету
+    status: str  # Константа, READY_FOR_PAY
+    repetitive: bool  # Служебное поле
+    pay_url: str  # Ссылка для оплаты счета в интерфейсе QIWI
+    type: str  # Константа, MERCHANT
+    provider_id: int  # ID провайдера в QIWI Wallet
+    provider_short_name: str  # Краткое наименование провайдера
+    provider_long_name: str  # Развернутое наименование провайдера
+    provider_logo_url: str  # Ссылка на логотип провайдера
+
+    def __init__(self, raw: dict):
+        self.raw = raw
+
+        self._parse(**raw)
+
+    def _parse(self, id: int = None, external_id: str = None, creation_datetime: int = None,
+               expiration_datetime: int = None, sum: dict = None, comment: str = None, status: str = None,
+               repetitive: bool = None, provider: dict = None, pay_url: str = None, type: str = None):
+        self.id = id
+        self.external_id = external_id
+        self.creation_datetime = creation_datetime
+        self.expiration_datetime = expiration_datetime
+        self.status = status
+        self.comment = comment
+        self.repetitive = repetitive
+        self.provider = provider
+        self.pay_url = pay_url
+        self.type = type
+
+        if sum:
+            self.amount = sum['amount']
+            self.currency = parse_item_multi_value_enum(sum['currency'], Currency)
+
+        if provider:
+            self.provider_id = provider['id']
+            self.provider_short_name = provider['shortName']
+            self.provider_long_name = provider['longName']
+            self.provider_logo_url = provider['logoUrl']
 
     def __str__(self):
         return str(self.raw)

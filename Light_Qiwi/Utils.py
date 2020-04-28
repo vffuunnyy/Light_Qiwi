@@ -23,7 +23,10 @@ def parse_item_multi_value_enum(parse_item, enum):
     :return Currency
     """
     for i in enum:
-        if parse_item in i.values:
-            return i
+        try:
+            if int(parse_item) in i.values:
+                return i
+        except ValueError:
+            pass
 
     return enum.UNKNOWN

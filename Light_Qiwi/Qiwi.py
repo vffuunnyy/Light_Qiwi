@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 from _thread import start_new_thread
 from time import time, sleep
+from typing import Callable, List
 
-from requests import Session
+from requests import Session, Response
 
-from Light_Qiwi.Callback import *
-from Light_Qiwi.Enums import *
+from Light_Qiwi.Enums import Provider
 from Light_Qiwi.Errors import *
 from Light_Qiwi.Objects import *
 
@@ -14,8 +14,11 @@ class Qiwi:
 
     def __init__(self, token, phone):
         """
-        :param token (str):
-        :param phone (str):
+        :type token: str
+        :type phone: str
+
+        :param token: Токен от API Киви
+        :param phone: Номер для которого был получен токен
         """
 
         self._s = Session()
@@ -24,29 +27,38 @@ class Qiwi:
         self._s.headers['Content-Type'] = 'application/json'
         self._s.headers['Authorization'] = 'Bearer ' + token
 
-        self._host = 'https://edge.qiwi.com/'
+        self._host = 'https://edge.qiwi.com'
 
         self.phone = phone.replace('+', '')
 
         self.func = None
+        self.bill_func = None
+        self._bind_payments = []
+        self._bind_bills = []
 
     @property
-    def balance(self):
-        return self.get_balance()[0].balance
+    def balance(self) -> float:
+        """Получить баланс первого в списке кошелька"""
+        for balance in self.get_balance():
+            if balance.fs_alias == 'qb_wallet':
+                return balance
 
     @property
-    def _transaction_id(self):
+    def _transaction_id(self) -> str:
         """
-        :return: UNIX time *
-        1000
+        :return: UNIX time * 1000
         """
 
         return str(int(time() * 1000))
 
-    def pay(self, account: str, amount: float = 1.0, comment: str = "",
-            currency: Currency = Currency.RUB, provider: Provider = Provider.QIWI):
-        """
-        Перевод денег на Qiwi кошелёк или Карты других банков.
+    @property
+    def identification(self) -> dict:
+        """Получить данные идентефикации аккаунта"""
+        return self._req(f'{self._host}/identification/v1/persons/{self.phone}/identification').json()
+
+    def pay(self, account: str, amount: float = 1.0, comment: str = '',
+            currency: Currency = Currency.RUB, provider: Provider = Provider.QIWI) -> QiwiTransferAnswer:
+        """Перевод денег на Qiwi кошелёк или Карты других банков.
 
         :type account: str
         :type amount: float
@@ -63,10 +75,11 @@ class Qiwi:
 
         :raises: APIError
 
-        :returns: Json Object
-        :rtype: dict
+        :returns: QiwiTransferAnswer object
+        :rtype: QiwiTransferAnswer
         """
-        url = self._host + 'sinap/api/v2/terms/{}/payments'.format(provider.value)
+
+        url = f'{self._host}/sinap/api/v2/terms/{provider.value}/payments'
 
         json = {
             'id': self._transaction_id,
@@ -76,7 +89,7 @@ class Qiwi:
             },
             'paymentMethod': {
                 'type': 'Account',
-                'accountId': '643'
+                'accountId': str(currency.values[1])
             },
             'fields': {'account': account},
             'comment': comment
@@ -92,14 +105,58 @@ class Qiwi:
             data["status_code"] = response.status_code
             raise APIError(data)
 
+        return QiwiTransferAnswer(data)
+
+    def cancel_bill(self, uid: int) -> Response:
+        """Отклонение счёта
+
+        :type uid: int
+
+        :param uid: ID счёта для отклонения
+
+        :rtype: dict
+        """
+
+        return self._req(f'{self._host}/checkout/api/bill/reject', json={
+            'id': uid
+        })
+
+    def pay_bill(self, uid: int, currency: Currency = Currency.RUB) -> dict:
+        """Оплата выставленного счёта
+
+        :param uid: ID счёта для оплаты
+        :param currency: Валюта счёта (см. Enums.Currency)
+        :return:
+        """
+
+        url = f'{self._host}/checkout/invoice/pay/wallet'
+
+        json = {
+            'invoice_uid': uid,
+            'currency': str(currency.values[1])
+        }
+
+        response = self._req(url, json=json)
+        data = response.json()
+
+        if 'code' in data or 'errorCode' in data:
+            data["status_code"] = response.status_code
+            raise APIError(data)
+
         return data
 
-    def _req(self, url, params: dict = None, json: dict = None):
-        """
-        Args:
-            url:
-            params (dict):
-            json (dict):
+    def _req(self, url, params: dict = None, json: dict = None) -> Response:
+        """Метод для общения с API
+
+        :type url: str
+        :type params: dict
+        :type json: dict
+
+        :param url: Ссылка для запроса
+        :param params: Для GET запроса
+        :param json: Для POST запроса
+
+        :rtype: Response
         """
         if json:
             response = self._s.post(url, json=json)
@@ -111,18 +168,17 @@ class Qiwi:
 
         return response
 
-    def get_balance(self, retry=False):
-        """
-        Args:
-            retry:
-        """
-        url = self._host + 'funding-sources/v2/persons/{}/accounts'.format(self.phone)
-        params = {}
+    def get_balance(self, retry=False) -> List[Balance]:
+        """Возвращает список балансов
 
-        if retry:
-            params = {
-                'timeout': 1000
-            }
+        :type retry: bool
+
+        :param retry: Служебное
+
+        :rtype: list
+        """
+        url = f'{self._host}funding-sources/v2/persons/{self.phone}/accounts'
+        params = {'timeout': 1000} if retry else {}
 
         response = self._req(url, params).json()
 
@@ -136,14 +192,20 @@ class Qiwi:
 
         return balances
 
-    def _person_profile(self, auth_info=True, contract_info=True, user_info=True):
+    def _person_profile(self, auth_info=True, contract_info=True, user_info=True) -> Response:
+        """Возвращает профиль пользователя
+
+        :type auth_info: bool
+        :type contract_info: bool
+        :type user_info: bool
+
+        :param auth_info: Служебное
+        :param contract_info: Служебное
+        :param user_info: Служебное
+
+        :rtype: Response
         """
-        Args:
-            auth_info:
-            contract_info:
-            user_info:
-        """
-        url = self._host + 'person-profile/v1/profile/current'
+        url = f'{self._host}/person-profile/v1/profile/current'
 
         params = {
             'authInfoEnabled': auth_info,
@@ -153,70 +215,107 @@ class Qiwi:
 
         return self._req(url, params)
 
-    def identification(self):
-        url = self._host + 'identification/v1/persons/{}/identification'.format(self.phone)
+    def get_payments(self, rows: int = 25, operation: OperationType = OperationType.ALL) -> List[Payment]:
+        """Возвращает список последних операций
 
-        return self._req(url).json()
+        :type rows: int
+        :type operation: OperationType
 
-    def get_payments(self, rows: int = 25, operation: OperationType = OperationType.ALL):
+        :param rows: Число платежей в ответе
+        :param operation: Указывает какие типы операций отдать в ответе
+
+        :rtype: list
         """
-        Args:
-            rows (int):
-            operation (str):
-        """
-        url = self._host + 'payment-history/v2/persons/{}/payments'.format(self.phone)
+        url = f'{self._host}/payment-history/v2/persons/{self.phone}/payments'
 
         params = {
-            'rows': rows,
+            'rows': min(rows, 50),
             'operation': operation.value
         }
 
-        return [Payment(i) for i in self._req(url, params).json()["data"]]
+        data = self._req(url, params).json()
 
-    def get_transaction(self, transaction_id: int):
+        if 'error' in data:
+            raise APIError(data['error'])
+        elif 'data' not in data:
+            raise APIError(data)
+        else:
+            return list(map(Payment, data['data']))
+
+    def get_bills(self, rows: int = 25) -> List[Bill]:
+        """Возвращает список выставленных счетов
+
+        :type rows: int
+
+        :param rows: Число счетов в ответе
+
+        :rtype: list
         """
-        Args:
-            transaction_id (int):
+
+        url = f'{self._host}/checkout/api/bill/search'
+
+        params = {
+            'rows': rows,
+            'statuses': 'READY_FOR_PAY'
+        }
+
+        data = self._req(url, params).json()
+
+        if 'error' in data:
+            raise APIError(data['error'])
+        elif 'bills' not in data:
+            raise APIError(data)
+        else:
+            return list(map(Bill, data['bills']))
+
+    def get_transaction(self, transaction_id: int) -> Payment:
+        """Получить транзакцию по её id
+        :type transaction_id: int
+
+        :param transaction_id:
+
+        :rtype: Payment
         """
-        url = self._host + 'payment-history/v2/transactions/{}'.format(transaction_id)
+        url = f'{self._host}/payment-history/v2/transactions/{transaction_id}'
 
         return Payment(self._req(url).json())
 
-    @staticmethod
-    def __callback():
-        LightQiwiCallback()
-
     def check(self, interval: int = 3, amount: int = 25,
-              operation: OperationType = OperationType.IN):
-        """
+              operation: OperationType = OperationType.IN) -> Payment:
+        """Проверяет на наличие новых операций
+        :type interval: int
+        :type amount: int
+        :type operation: OperationType
 
-        :param interval:
-        :param amount:
-        :param operation:
-        :return:
+        :param interval: Интервал обновления истории
+        :param amount: Количество получаемых объектов за одно обновление
+        :param operation: Тип операции, который следует получать
+
+        :rtype: Payment
         """
-        payments = self.get_payments(operation=operation)
+        payments = []
 
         while True:
-            sleep(interval)
-
             new_payments = self.get_payments(amount, operation)
-            update = False
+
             for payment in new_payments:
                 if payment not in payments:
-                    update = True
                     yield payment
-            if update:
-                payments = new_payments
+
+            payments = new_payments
+
+            sleep(interval)
 
     def bind_check(self, interval: int = 3, amount: int = 25,
-                   operation: OperationType = OperationType.IN):
+                   operation: OperationType = OperationType.IN) -> Callable:
         """
+        :type interval: int
+        :type amount: int
+        :type operation: OperationType
 
-        :param interval:
-        :param amount:
-        :param operation:
-        :return decorator:
+        :param interval: Интервал обновления
+        :param amount: Число получаемых платежей из истории
+        :param operation: Тип операции плажетей
         """
 
         def decorator(func):
@@ -232,7 +331,88 @@ class Qiwi:
         return decorator
 
     def start(self):
+        """Запустить блокирующую обработку новых платежей"""
         return self.func()
 
     def start_threading(self):
+        """Запустить обработку новых платежей в другом потоке"""
         return start_new_thread(self.func, ())
+
+    def on_payment_func(self, interval: int = 3, amount: int = 25,
+                        operation: OperationType = OperationType.IN) -> Callable:
+
+        def decorator(func):
+            if func.__code__.co_argcount != 1:
+                raise ArgumentError('Функция должна иметь 1 аргумент!')
+
+            def run():
+                for payment in self.check(interval, amount, operation):
+                    if payment.comment in self._bind_payments:
+                        self._bind_payments.remove(payment.comment)
+                        func(payment)
+
+            self.func = run
+
+        return decorator
+
+    def bind(self, comment: str):
+        """Ожидание платежа с данным комментарием"""
+        self._bind_payments.append(comment)
+
+    def check_bill(self, interval: int = 3, amount: int = 3):
+        bills = []
+
+        while True:
+            new_bills = self.get_bills(amount)
+
+            for bill in new_bills:
+                if bill not in bills:
+                    yield bill
+
+            bills = new_bills
+
+            sleep(interval)
+
+    def bind_check_bill(self, interval: int = 3, amount: int = 3):
+        """
+        :param interval:
+        :param amount:
+        :return decorator:
+        """
+
+        def decorator(func):
+            if func.__code__.co_argcount != 1:
+                raise ArgumentError('Функция должна иметь 1 аргумент!')
+
+            def run():
+                for bill in self.check_bill(interval, amount):
+                    func(bill)
+
+            self.bill_func = run
+
+        return decorator
+
+    def start_bill(self):
+        return self.bill_func()
+
+    def start_threading_bill(self):
+        return start_new_thread(self.bill_func, ())
+
+    def on_bill_func(self, interval: int = 3, amount: int = 3) -> Callable:
+
+        def decorator(func):
+            if func.__code__.co_argcount != 1:
+                raise ArgumentError('Функция должна иметь 1 аргумент!')
+
+            def run():
+                for bill in self.check_bill(interval, amount):
+                    if bill.comment in self._bind_bills:
+                        self._bind_bills.remove(bill.comment)
+                        func(bill)
+
+            self.bill_func = run
+
+        return decorator
+
+    def bind_bill(self, comment):
+        self._bind_bills.append(comment)
