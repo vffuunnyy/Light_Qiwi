@@ -12,7 +12,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 
 setup(
     name='Light_Qiwi',
-    version='0.1',
+    version='1.3.0',
     packages=['Light_Qiwi'],
     url='https://github.com/vffuunnyy/Light_Qiwi',
     license='Apache License, Version 2.0',
@@ -20,7 +20,7 @@ setup(
     author_email='vffuunnyy@gmail.com',
     setup_requires=['pyversion'],
     auto_version=True,
-    description=u'Python модуль для написания скриптов для Qiwi (qiwi.com) (API wrapper)',
+    description=u'Python модуль для обработки платежей Qiwi (qiwi.com) (API wrapper)',
     long_description=long_description,
     long_description_content_type='text/markdown',
     install_requires=['requests', 'cherrypy', 'aenum'],

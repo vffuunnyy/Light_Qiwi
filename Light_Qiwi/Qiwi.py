@@ -2,10 +2,11 @@
 from _thread import start_new_thread
 from time import time, sleep
 from typing import Callable, List
+from urllib.parse import quote
 
 from requests import Session, Response
 
-from Light_Qiwi.Enums import Provider
+from Light_Qiwi.Enums import Provider, Field
 from Light_Qiwi.Errors import *
 from Light_Qiwi.Objects import *
 
@@ -38,10 +39,16 @@ class Qiwi:
 
     @property
     def balance(self) -> float:
-        """Получить баланс первого в списке кошелька"""
-        for balance in self.get_balance():
+        """Получить баланс кошелька"""
+        balances = self.get_balance()
+
+        assert balances, 'Список балансов пуст!'
+
+        for balance in balances:
             if balance.fs_alias == 'qb_wallet':
                 return balance
+
+        return balance
 
     @property
     def _transaction_id(self) -> str:
@@ -50,6 +57,26 @@ class Qiwi:
         """
 
         return str(int(time() * 1000))
+
+    def get_pay_url(self, amount: float, comment: str = '', account: str = None,
+                    lock_fields: list = (Field.COMMENT, Field.ACCOUNT, Field.AMOUNT)) -> str:
+        url = 'https://qiwi.com/payment/form/99'
+        amount_int = int(amount)
+        amount_frac = int(round(amount % 1, 2) * 100)
+
+        # if nickname:
+        #    url += f"999?extra['accountType']=nickname&extra['account']={nickname}"
+        # else:
+
+        if not account:
+            account = self.phone
+        url += f"?extra['account']={account}&extra['comment']={comment}" \
+               f"&amountInteger={amount_int}&amountFraction={amount_frac}"
+
+        for i, k in enumerate(lock_fields):
+            url += f"&blocked[{i}]={k.value}"
+
+        return quote(url, '/?=&:')
 
     @property
     def identification(self) -> dict:

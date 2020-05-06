@@ -2,7 +2,7 @@ Light_Qiwi ![Python 3.5, 3.6, 3.7](https://img.shields.io/badge/python-3.5%20%7C
 ----------
 **Light_Qiwi** – Python модуль для написания скриптов для Qiwi (qiwi.com) (API wrapper)
 
-* [Документация](https://light-qiwi.readthedocs.io/en/latest/)
+* [~~Документация~~](https://light-qiwi.readthedocs.io/en/latest/)
 * [Примеры использования](./examples)
 * [Документация по API](https://developer.qiwi.com/ru/qiwi-wallet-personal/index.html)
 
@@ -10,6 +10,13 @@ Light_Qiwi ![Python 3.5, 3.6, 3.7](https://img.shields.io/badge/python-3.5%20%7C
 from Light_Qiwi import Qiwi
 
 api = Qiwi('00000000000000000000000000000000', '+70123456789')
+
+# Получение ссылки для оплаты
+print(api.get_pay_url(100.5, 'тут коммент',
+    'а тут номер куда переводить, если не передан, то береётся из объекта созданного'
+))
+
+# >>> https://qiwi.com/payment/form/99?extra['account']=...
 
 
 """
@@ -21,7 +28,7 @@ api = Qiwi('00000000000000000000000000000000', '+70123456789')
 @api.bind_check(5, 5)
 def receive(payment):
     if payment.account == "79000000000":
-        api.pay(payment.account, payment.amount, "Забери свои деньги!")
+        api.pay(payment.account, payment.amount, "Забери свои грязные деньги!")
         
 api.start()
 ```
