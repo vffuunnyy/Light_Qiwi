@@ -67,6 +67,7 @@ class Provider(Enum):
     :param Provider.QIWI: Перевод на QIWI Wallet
     """
 
+    # Перевод по номеру в киви
     QIWI = 99
 
     # Перевод на карту Visa (карты российских банков)
@@ -82,6 +83,15 @@ class Provider(Enum):
 
     # Перевод на карту национальной платежной системы МИР
     MIR = 31652
+    
+    # Перевод на Яндекс.Деньги
+    YANDEX = 26476
+    
+    # Перевод в киви по нику
+    NICKNAME = 99999
+    
+    # Перевод на Webmoney
+    WEBMONEY = 31271
 
     UNKNOWN = 'Unknown'
 
