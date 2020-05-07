@@ -7,7 +7,7 @@ Light_Qiwi ![Python 3.5, 3.6, 3.7](https://img.shields.io/badge/python-3.5%20%7C
 * [Документация по API](https://developer.qiwi.com/ru/qiwi-wallet-personal/index.html)
 
 ```python
-from Light_Qiwi import Qiwi
+from light_qiwi import Qiwi
 
 api = Qiwi('00000000000000000000000000000000', '+70123456789')
 

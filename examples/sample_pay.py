@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from Light_Qiwi import Qiwi, Provider
+from light_qiwi import Qiwi, Provider
 
 api = Qiwi('00000000000000000000000000000000', '71234567890')
 

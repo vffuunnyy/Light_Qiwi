@@ -4,16 +4,16 @@ from setuptools import setup
 """
 :authors: vffuunnyy
 :license: Apache License, Version 2.0
-:copyright: (c) 2019 vffuunnyy
+:copyright: (c) 2020 vffuunnyy
 """
 
 with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 setup(
-    name='Light_Qiwi',
-    version='1.3.0',
-    packages=['Light_Qiwi'],
+    name='light_qiwi',
+    version='1.3.1',
+    packages=['light_qiwi'],
     url='https://github.com/vffuunnyy/Light_Qiwi',
     license='Apache License, Version 2.0',
     author='vffuunnyy',
@@ -23,7 +23,7 @@ setup(
     description=u'Python модуль для обработки платежей Qiwi (qiwi.com) (API wrapper)',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    install_requires=['requests', 'cherrypy', 'aenum'],
+    install_requires=['requests', 'aenum'],
     classifiers=[
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',

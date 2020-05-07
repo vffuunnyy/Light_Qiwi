@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from Light_Qiwi import Qiwi, OperationType
+from light_qiwi import Qiwi, OperationType
 
 api = Qiwi("token", "phone")
 

@@ -6,9 +6,9 @@ from urllib.parse import quote
 
 from requests import Session, Response
 
-from Light_Qiwi.Enums import Provider, Field
-from Light_Qiwi.Errors import *
-from Light_Qiwi.Objects import *
+from light_qiwi.enums import Provider, Field
+from light_qiwi.errors import *
+from light_qiwi.objects import *
 
 
 class Qiwi:
@@ -33,9 +33,9 @@ class Qiwi:
         self.phone = phone.replace('+', '')
 
         self.func = None
-        self.bill_func = None
-        self._bind_payments = []
-        self._bind_bills = []
+        # self.bill_func = None
+        self._bind_payments: List[str, object] = []
+        # self._bind_bills = []
 
     @property
     def balance(self) -> float:
@@ -369,77 +369,81 @@ class Qiwi:
                         operation: OperationType = OperationType.IN) -> Callable:
 
         def decorator(func):
-            if func.__code__.co_argcount != 1:
-                raise ArgumentError('Функция должна иметь 1 аргумент!')
+            if func.__code__.co_argcount not in (1, 2):
+                raise ArgumentError('Функция должна принимать 1 или 2 аргумента!')
 
             def run():
                 for payment in self.check(interval, amount, operation):
-                    if payment.comment in self._bind_payments:
-                        self._bind_payments.remove(payment.comment)
-                        func(payment)
+                    for bound in self._bind_payments:
+                        if payment.comment in bound:
+                            self._bind_payments.remove(bound)
+                            if func.__code__.co_argcount == 1:
+                                func(payment, bound[1])
+                            else:
+                                func(payment)
 
             self.func = run
 
         return decorator
 
-    def bind(self, comment: str):
+    def bind(self, comment: str, payload: object = None):
         """Ожидание платежа с данным комментарием"""
-        self._bind_payments.append(comment)
+        self._bind_payments.append((comment, payload))
 
-    def check_bill(self, interval: int = 3, amount: int = 3):
-        bills = []
-
-        while True:
-            new_bills = self.get_bills(amount)
-
-            for bill in new_bills:
-                if bill not in bills:
-                    yield bill
-
-            bills = new_bills
-
-            sleep(interval)
-
-    def bind_check_bill(self, interval: int = 3, amount: int = 3):
-        """
-        :param interval:
-        :param amount:
-        :return decorator:
-        """
-
-        def decorator(func):
-            if func.__code__.co_argcount != 1:
-                raise ArgumentError('Функция должна иметь 1 аргумент!')
-
-            def run():
-                for bill in self.check_bill(interval, amount):
-                    func(bill)
-
-            self.bill_func = run
-
-        return decorator
-
-    def start_bill(self):
-        return self.bill_func()
-
-    def start_threading_bill(self):
-        return start_new_thread(self.bill_func, ())
-
-    def on_bill_func(self, interval: int = 3, amount: int = 3) -> Callable:
-
-        def decorator(func):
-            if func.__code__.co_argcount != 1:
-                raise ArgumentError('Функция должна иметь 1 аргумент!')
-
-            def run():
-                for bill in self.check_bill(interval, amount):
-                    if bill.comment in self._bind_bills:
-                        self._bind_bills.remove(bill.comment)
-                        func(bill)
-
-            self.bill_func = run
-
-        return decorator
-
-    def bind_bill(self, comment):
-        self._bind_bills.append(comment)
+    # def check_bill(self, interval: int = 3, amount: int = 3):
+    #     bills = []
+    #
+    #     while True:
+    #         new_bills = self.get_bills(amount)
+    #
+    #         for bill in new_bills:
+    #             if bill not in bills:
+    #                 yield bill
+    #
+    #         bills = new_bills
+    #
+    #         sleep(interval)
+    #
+    # def bind_check_bill(self, interval: int = 3, amount: int = 3):
+    #     """
+    #     :param interval:
+    #     :param amount:
+    #     :return decorator:
+    #     """
+    #
+    #     def decorator(func):
+    #         if func.__code__.co_argcount != 1:
+    #             raise ArgumentError('Функция должна иметь 1 аргумент!')
+    #
+    #         def run():
+    #             for bill in self.check_bill(interval, amount):
+    #                 func(bill)
+    #
+    #         self.bill_func = run
+    #
+    #     return decorator
+    #
+    # def start_bill(self):
+    #     return self.bill_func()
+    #
+    # def start_threading_bill(self):
+    #     return start_new_thread(self.bill_func, ())
+    #
+    # def on_bill_func(self, interval: int = 3, amount: int = 3) -> Callable:
+    #
+    #     def decorator(func):
+    #         if func.__code__.co_argcount != 1:
+    #             raise ArgumentError('Функция должна иметь 1 аргумент!')
+    #
+    #         def run():
+    #             for bill in self.check_bill(interval, amount):
+    #                 if bill.comment in self._bind_bills:
+    #                     self._bind_bills.remove(bill.comment)
+    #                     func(bill)
+    #
+    #         self.bill_func = run
+    #
+    #     return decorator
+    #
+    # def bind_bill(self, comment):
+    #     self._bind_bills.append(comment)

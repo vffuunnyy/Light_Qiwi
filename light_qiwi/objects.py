@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from Light_Qiwi.Enums import OperationType, Currency, PaymentStatus
-from Light_Qiwi.Utils import parse_item_enum, parse_item_multi_value_enum
+from light_qiwi.enums import OperationType, Currency, PaymentStatus
+from light_qiwi.utils import parse_item_enum, parse_item_multi_value_enum
 
 
 class Payment:
@@ -11,7 +11,7 @@ class Payment:
     transaction_id: int  # ID транзакции в процессинге QIWI Wallet
     trm_txn_id: int  # Клиентский ID транзакции
     type: OperationType  # Тип платежа (см. Enums.OperationType)
-    phone: int  # Номер кошелька
+    phone: int  # Номер вашего кошелька
     error_code: int  # Код ошибки платежа
     error: str  # Описание ошибки
     status: PaymentStatus  # Статус платежа (см. Enums.PaymentStatus)
@@ -36,6 +36,7 @@ class Payment:
     provider_description: str  # Описание провайдера (HTML)
     provider_keys: str  # Список ключевых слов
     provider_site_url: str  # Сайт провайдера
+    source: dict
 
     # Дата/время платежа, во временной зоне запроса (см. параметр startDate).
     date: str  # Формат даты ГГГГ-ММ-ДД'T'чч:мм:сс+03:00
@@ -54,7 +55,7 @@ class Payment:
                provider: dict = None, comment: str = None, currencyRate: float = None, extras: dict = None,
                chequeReady: bool = None, bankDocumentAvailable: bool = None, bankDocumentReady: bool = None,
                repeatPaymentEnabled: bool = None, favoritePaymentEnabled: bool = None,
-               regularPaymentEnabled: bool = None):
+               regularPaymentEnabled: bool = None, source: dict = None, **kwargs):
         self.transaction_id = txnId
         self.trm_txn_id = trmTxnId
         self.type = parse_item_enum(type, OperationType)
@@ -62,11 +63,9 @@ class Payment:
         self.error_code = errorCode
         self.error = error
         self.date = date
-
         self.status = parse_item_enum(status, PaymentStatus)
         self.status_text = statusText
         self.account = account
-
         self.comment = comment
         self.currency_rate = currencyRate
         self.cheque_ready = chequeReady
@@ -76,6 +75,8 @@ class Payment:
         self.favorite_payment_enabled = favoritePaymentEnabled
         self.regular_payment_enabled = regularPaymentEnabled
         self.extras = extras
+        self.source = source
+        self.other = kwargs
 
         if sum:
             self.amount = sum['amount']
@@ -101,6 +102,9 @@ class Payment:
             return self.transaction_id == other.transaction_id
 
     def __str__(self):
+        return str(self.raw)
+
+    def __repr__(self):
         return str(self.raw)
 
 
@@ -130,13 +134,14 @@ class Balance:
         self._parse(**raw)
 
     def _parse(self, alias: str = None, fsAlias: str = None, bankAlias: str = None, title: str = None,
-               hasBalance: bool = None, currency: int = None, type: dict = None, balance: dict = None):
+               hasBalance: bool = None, currency: int = None, type: dict = None, balance: dict = None, **kwargs):
         self.alias = alias
         self.fs_alias = fsAlias
         self.bank_alias = bankAlias
         self.title = title
         self.has_balance = hasBalance
         self.currency = parse_item_multi_value_enum(currency, Currency)
+        self.other = kwargs
 
         if type:
             self.type_id = type['id']
@@ -175,11 +180,12 @@ class QiwiTransferAnswer:
         self._parse(**raw)
 
     def _parse(self, id: int = None, terms: int = 99, fields: dict = None, sum: dict = None, transaction: dict = None,
-               comment: str = None, source: str = None):
+               comment: str = None, source: str = None, **kwargs):
         self.id = id
         self.terms = terms
         self.comment = comment
         self.source = source
+        self.other = kwargs
 
         if fields:
             self.account = fields['account']
@@ -193,6 +199,9 @@ class QiwiTransferAnswer:
             self.status = transaction['state']['code']
 
     def __str__(self):
+        return str(self.raw)
+
+    def __repr__(self):
         return str(self.raw)
 
 
@@ -224,7 +233,7 @@ class Bill:
 
     def _parse(self, id: int = None, external_id: str = None, creation_datetime: int = None,
                expiration_datetime: int = None, sum: dict = None, comment: str = None, status: str = None,
-               repetitive: bool = None, provider: dict = None, pay_url: str = None, type: str = None):
+               repetitive: bool = None, provider: dict = None, pay_url: str = None, type: str = None, **kwargs):
         self.id = id
         self.external_id = external_id
         self.creation_datetime = creation_datetime
@@ -235,6 +244,7 @@ class Bill:
         self.provider = provider
         self.pay_url = pay_url
         self.type = type
+        self.other = kwargs
 
         if sum:
             self.amount = sum['amount']
@@ -247,4 +257,7 @@ class Bill:
             self.provider_logo_url = provider['logoUrl']
 
     def __str__(self):
+        return str(self.raw)
+
+    def __repr__(self):
         return str(self.raw)
