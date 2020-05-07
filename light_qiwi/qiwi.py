@@ -378,9 +378,9 @@ class Qiwi:
                         if payment.comment in bound:
                             self._bind_payments.remove(bound)
                             if func.__code__.co_argcount == 1:
-                                func(payment, bound[1])
-                            else:
                                 func(payment)
+                            else:
+                                func(payment, bound[1])
 
             self.func = run
 
