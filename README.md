@@ -37,6 +37,10 @@ api.start()
 ----------
     $ pip install light_qiwi
     
+Обновление
+---------
+    $ pip install --upgrade light_qiwi
+    
 Автор
 ----------
 Вопросы задавать сюда или в **issue**:
